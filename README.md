@@ -2,13 +2,29 @@
 
 ## How to generate an Anki PKG from a Markdown file
 
-1. **Start server**
+1. **Activate environment**
+
+    ```bash
+    // Windows
+    .\env\Scripts\activate
+
+    //MacOS/Linux
+    source env/bin/activate
+    ```
+
+2. **Install dependencies**
+
+    ```bash
+    pip install -r requirements.txt
+    ```
+
+3. **Start server**
 
     ```bash
     uvicorn main:app --reload
     ```
 
-2. **Create a Postman Request**
+4. **Create a Postman Request**
 
    - URL: `http://localhost:8000/uploadfile`
    - Method: `POST`
@@ -17,11 +33,11 @@
        - Key: `file`
        - Value: `<file>`
 
-3. **Import .apkg into Anki**
+5. **Import .apkg into Anki**
 
     Select file `converted_deck.apkg` from project directory to import
 
-4. **Happy Learning**
+6. **Happy Learning**
 
 ## How to format a Markdown file (.md)
 
