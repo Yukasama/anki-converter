@@ -23,7 +23,7 @@
 
 4. **Happy Learning**
 
-## How to format the Markdown file
+## How to format a Markdown file (.md)
 
 - Note: There are two types of cards used here: Basic, Cloze
 - Note: Use only Bullet points in [Cloze]
