@@ -2,7 +2,17 @@
 
 ## How to generate an Anki PKG from a Markdown file
 
-1. **Activate environment**
+1. **Create python environment**
+
+    ```bash
+    // Windows
+    python -m venv env
+
+    //MacOS/Linux
+    python3 -m venv env
+    ```
+
+2. **Activate environment**
 
     ```bash
     // Windows
@@ -12,55 +22,58 @@
     source env/bin/activate
     ```
 
-2. **Install dependencies**
+3. **Install dependencies**
 
     ```bash
     pip install -r requirements.txt
     ```
 
-3. **Start server**
+4. **Start server**
 
     ```bash
     uvicorn main:app --reload
     ```
 
-4. **Create a Postman Request**
+5. **Create a Postman Request**
 
    - URL: `http://localhost:8000/uploadfile`
    - Method: `POST`
    - Body:
      - form-data:
-       - Key: `file`
-       - Value: `<file>`
+       - Key: file
+       - Value: `<file_name>.md`
 
-5. **Import .apkg into Anki**
+6. **Import .apkg into Anki**
 
     Select file `converted_deck.apkg` from project directory to import
 
-6. **Happy Learning**
+7. **Happy Learning**
 
 ## How to format a Markdown file (.md)
 
 - Note: There are two types of cards used here: Basic, Cloze
-- Note: Use only Bullet points in [Cloze]
+- Note: There are four variants of card formats as shown below
+- Note: In cards marked with [Cloze], only use bullet points
+
+```markdown
+# File Name
+
+## Heading
 
 ### Sub Heading (will be used as Tag for sub-Cards)
 
-#### Card Question 1 // Basic
-
+#### Card Question    // Basic
 Card Answer
 
-#### Card Question 2 // Basic with bullet points
-
+#### Card Question    // Basic with bullet points
 - Card Bullet Point
 - Card Bullet Point
 
-#### Card Question 3 [Cloze] // [Cloze] will turn it into x Cloze cards
+#### Card Question [Cloze]    // [Cloze] will turn bullet points into x Cloze cards
+- Card Bullet Point
+- Card Bullet Point
 
-- {{c1::Card Bullet Point}}
-- {{c2::Card Bullet Point}}
-
-#### Card Question 4 [Cloze] // `Description:` will not be included
-
-- Description: {{c1::Card Bullet Point}}
-- Description: {{c2::Card Bullet Point}}
+#### Card Question [Cloze]    // 'Description:' will not be included in Cloze tags
+- Description: Card Bullet Point
+- Description: Card Bullet Point
+```
