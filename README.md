@@ -2,39 +2,33 @@
 
 ## How to generate an Anki PKG from a Markdown file
 
-1. **Create python environment**
+1. **Setup environment**
 
     ```bash
     // Windows
-    python -m venv env
+    python -m venv convert-anki
+    cd convert-anki
+    .\Scripts\activate
 
-    //MacOS/Linux
-    python3 -m venv env
+    // MacOS/Linux
+    python3 -m venv convert-anki
+    cd convert-anki
+    source bin/activate
     ```
 
-2. **Activate environment**
-
-    ```bash
-    // Windows
-    .\env\Scripts\activate
-
-    //MacOS/Linux
-    source env/bin/activate
-    ```
-
-3. **Install dependencies**
+2. **Install dependencies**
 
     ```bash
     pip install -r requirements.txt
     ```
 
-4. **Start server**
+3. **Start server**
 
     ```bash
     uvicorn main:app --reload
     ```
 
-5. **Create a Postman Request**
+4. **Create a Postman Request**
 
    - URL: `http://localhost:8000/uploadfile`
    - Method: `POST`
@@ -43,17 +37,19 @@
        - Key: file
        - Value: `<file_name>.md`
 
-6. **Import .apkg into Anki**
+5. **Import .apkg into Anki**
 
     Select file `converted_deck.apkg` from project directory to import
 
-7. **Happy Learning**
+6. **Happy Learning**
 
 ## How to format a Markdown file (.md)
 
-- Note: There are two types of cards used here: Basic, Cloze
-- Note: There are four variants of card formats as shown below
-- Note: In cards marked with [Cloze], only use bullet points
+Note:
+
+- There are two types of cards used here: Basic, Cloze
+- There are four variants of cards, as shown below
+- In cards marked with [Cloze], only use bullet points
 
 ```markdown
 # File Name
@@ -73,7 +69,7 @@ Card Answer
 - Card Bullet Point
 - Card Bullet Point
 
-#### Card Question [Cloze]    // 'Description:' will not be included in Cloze tags
-- Description: Card Bullet Point
-- Description: Card Bullet Point
+#### Card Question [Cloze]    // '\<Option\>:' will not be included in Cloze tags
+- Option: Card Bullet Point
+- Other Option: Card Bullet Point
 ```
