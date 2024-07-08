@@ -4,29 +4,27 @@
 
 1. **Setup environment**
 
-    ```bash
-    // Windows
-    python -m venv convert-anki
-    cd convert-anki
-    .\Scripts\activate
+   ```bash
+   // Windows
+   python -m venv .
+   .\Scripts\activate
 
-    // MacOS/Linux
-    python3 -m venv convert-anki
-    cd convert-anki
-    source bin/activate
-    ```
+   // MacOS/Linux
+   python3 -m venv .
+   source bin/activate
+   ```
 
 2. **Install dependencies**
 
-    ```bash
-    pip install -r requirements.txt
-    ```
+   ```bash
+   pip install -r requirements.txt
+   ```
 
 3. **Start server**
 
-    ```bash
-    uvicorn main:app --reload
-    ```
+   ```bash
+   uvicorn main:app --reload
+   ```
 
 4. **Create a Postman Request**
 
@@ -39,7 +37,7 @@
 
 5. **Import .apkg into Anki**
 
-    Select file `converted_deck.apkg` from project directory to import
+   Select file `generated_deck.apkg` from project directory to import
 
 6. **Happy Learning**
 
@@ -58,18 +56,22 @@ Note:
 
 ### Sub Heading (will be used as Tag for sub-Cards)
 
-#### Card Question    // Basic
+#### Card Question // Basic
+
 Card Answer
 
-#### Card Question    // Basic with bullet points
+#### Card Question // Basic with bullet points
+
 - Card Bullet Point
 - Card Bullet Point
 
-#### Card Question [Cloze]    // [Cloze] will turn bullet points into x Cloze cards
+#### Card Question [Cloze] // [Cloze] will turn bullet points into x Cloze cards
+
 - Card Bullet Point
 - Card Bullet Point
 
-#### Card Question [Cloze]    // '\<Option\>:' will not be included in Cloze tags
+#### Card Question [Cloze] // '\<Option\>:' will not be included in Cloze tags
+
 - Option: Card Bullet Point
 - Other Option: Card Bullet Point
 ```

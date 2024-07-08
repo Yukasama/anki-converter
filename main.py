@@ -12,9 +12,10 @@ async def create_anki_deck_from_markdown(file: UploadFile = File(...)):
     logging.info(f"Received file with content: {markdown_content}")
 
     cards = parse_markdown(markdown_content)
-    deck = create_anki_deck('Example Deck', cards)
+    deck = create_anki_deck('Generated Deck', cards)
 
-    output_file = 'converted_deck.apkg'
+    output_file = 'generated_deck.apkg'
     save_deck_to_file(deck, output_file)
-
-    return FileResponse(output_file, filename=output_file, media_type='application/apkg')
+    
+    # return FileResponse(output_file, media_type='application/octet-stream', filename=output_file)
+    return "OK"

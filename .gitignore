@@ -16,7 +16,7 @@ venv.bak/
 pyvenv.cfg
 
 # FastAPI specific
-converted_deck.apkg
+generated_deck.apkg
 
 # Configuration files
 *.env
