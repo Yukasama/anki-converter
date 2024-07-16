@@ -5,7 +5,7 @@ from utils.markdown_to_anki import parse_markdown, create_anki_deck, save_deck_t
 
 app = FastAPI()
 
-@app.post("/uploadfile/")
+@app.post("/api/uploadfile")
 async def create_anki_deck_from_markdown(file: UploadFile = File(...)):
     content = await file.read()
     markdown_content = content.decode('utf-8')
@@ -17,5 +17,4 @@ async def create_anki_deck_from_markdown(file: UploadFile = File(...)):
     output_file = 'generated_deck.apkg'
     save_deck_to_file(deck, output_file)
     
-    # return FileResponse(output_file, media_type='application/octet-stream', filename=output_file)
-    return "OK"
+    return FileResponse(output_file, media_type='application/octet-stream', filename=output_file)
