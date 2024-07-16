@@ -7,7 +7,7 @@ export default function Home() {
         encType="multipart/form-data"
       >
         <input type="file" name="file" />
-        <button type="submit">Let's go</button>
+        <button type="submit">Convert</button>
       </form>
     </main>
   );
