@@ -1,18 +1,18 @@
 from fastapi import FastAPI, File, UploadFile
 from fastapi.responses import FileResponse
-from fastapi.middleware.cors import CORSMiddleware
+# from fastapi.middleware.cors import CORSMiddleware
 import logging
 from utils.markdown_to_anki import parse_markdown, create_anki_deck, save_deck_to_file 
 
 app = FastAPI()
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["https://anki-converter.zenathra.com"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# app.add_middleware(
+#     CORSMiddleware,
+#     allow_origins=["https://anki-converter.zenathra.com"],
+#     allow_credentials=True,
+#     allow_methods=["*"],
+#     allow_headers=["*"],
+# )
 
 @app.post("/api/uploadfile")
 async def create_anki_deck_from_markdown(file: UploadFile = File(...)):
