@@ -6,22 +6,27 @@ export const uploadFile = async (formData: FormData) => {
   try {
     const file = formData.get('file') as File
     if (!file) {
-      return { error: 'No file submitted.' }
+      logger.debug('uploadFile (invalid)')
+      throw new Error('No file submitted.')
     }
-    logger.debug('uploadFile (attempt): file=%o', file)
 
-    const result = await fetch('/api/uploadfile', {
+    const uploadData = new FormData()
+    uploadData.append('file', file)
+
+    const result = await fetch('http://localhost:8000/api/uploadfile', {
       method: 'POST',
-      body: file,
+      body: uploadData,
     })
 
     if (!result.ok) {
-      return { error: 'File upload failed.' }
+      logger.debug('uploadFile (error): error=result not ok.')
+      throw new Error('File upload failed.')
     }
 
-    return result
+    logger.debug('uploadFile (done)')
+    return await result.blob()
   } catch (error) {
-    console.error('Error uploading file:', error)
-    return { error: 'File not uploaded.' }
+    logger.debug('uploadFile (error): error=%s', error)
+    throw new Error(`File not uploaded: ${error}`)
   }
 }
