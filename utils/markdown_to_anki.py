@@ -143,6 +143,3 @@ def create_anki_deck(deck_name, cards):
         my_deck.add_note(note)
 
     return my_deck
-
-def save_deck_to_file(deck, filename):
-    genanki.Package(deck).write_to_file(filename)
