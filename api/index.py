@@ -86,14 +86,13 @@ def create_anki_deck(deck_name, tags, questions):
         998877661,
         'Cloze Model',
         fields=[
-            {'name': 'Question'},
             {'name': 'Text'},
         ],
         templates=[
             {
                 'name': 'Cloze Card',
-                'qfmt': '{{Question}}<br>{{cloze:Text}}',
-                'afmt': '{{Question}}<br>{{cloze:Text}}',
+                'qfmt': '{{cloze:Text}}',
+                'afmt': '{{cloze:Text}}',
             },
         ],
         css="""
@@ -130,10 +129,10 @@ def create_anki_deck(deck_name, tags, questions):
             for i, part in enumerate(parts):
                 # Remove leading dashes and whitespace from list items
                 cloze_lines = [f'{{{{c{j+1}::{line.strip().lstrip("-").strip()}}}}}' if j == i else line.strip().lstrip("-").strip() for j, line in enumerate(parts)]
-                cloze_text = "<ul><li>" + "</li><li>".join(cloze_lines) + "</li></ul>"
+                cloze_text = f"{question}<br><ul><li>" + "</li><li>".join(cloze_lines) + "</li></ul>"
                 note = genanki.Note(
                     model=model_cloze,
-                    fields=[question, cloze_text])
+                    fields=[cloze_text])
                 if tags:
                     note.tags = tags
                 deck.add_note(note)
