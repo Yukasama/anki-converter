@@ -1,145 +1,148 @@
+from fastapi import FastAPI, File, UploadFile
+from fastapi.responses import StreamingResponse
+from fastapi.middleware.cors import CORSMiddleware
+import logging
 import genanki
-import re
+import io
 
-def parse_markdown(md_content):
-    headers = re.findall(r'(#+) (.*)', md_content)
-    content = re.split(r'#+ .*', md_content)[1:]
+app = FastAPI()
+
+logging.basicConfig(level=logging.DEBUG)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Define model for Cloze cards
+cloze_model = genanki.Model(
+    1607392319,
+    'Cloze Model',
+    fields=[
+        {'name': 'Text'},
+    ],
+    templates=[
+        {
+            'name': 'Cloze Card',
+            'qfmt': '{{cloze:Text}}',
+            'afmt': '{{cloze:Text}}',
+        },
+    ],
+    css='.card { font-family: arial; font-size: 20px; text-align: left; color: black; background-color: white; }'
+)
+
+# Define model for Basic cards
+basic_model = genanki.Model(
+    1607392320,
+    'Basic Model',
+    fields=[
+        {'name': 'Question'},
+        {'name': 'Answer'},
+    ],
+    templates=[
+        {
+            'name': 'Basic Card',
+            'qfmt': '{{Question}}',
+            'afmt': '{{Answer}}',
+        },
+    ],
+    css='.card { font-family: arial; font-size: 20px; text-align: left; color: black; background-color: white; }'
+)
+
+def add_basic_card(deck, question, answer, tags=None):
+    note = genanki.Note(
+        model=basic_model,
+        fields=[question, answer],
+        tags=tags if tags else []
+    )
+    deck.add_note(note)
+    logging.debug(f"Added basic card: {question} -> {answer}")
+
+def add_cloze_card(deck, text, tags=None):
+    note = genanki.Note(
+        model=cloze_model,
+        fields=[text],
+        tags=tags if tags else []
+    )
+    deck.add_note(note)
+    logging.debug(f"Added cloze card: {text}")
+
+def parse_markdown(content):
+    lines = content.split('\n')
     cards = []
+    current_tags = []
+    question = None
+    answer_lines = []
+    cloze = False
 
-    for (level, header_text), text in zip(headers, content):
-        level = len(level)
-        card_text = text.strip()
-        if level == 4:
-            question = header_text.strip()
-            tags = find_tags(headers, header_text)
-            if '[Cloze]' in question:
-                question = question.replace('[Cloze]', '').strip()
-                cloze_cards = create_cloze_text(question, card_text, tags)
-                cards.extend(cloze_cards)
-            else:
-                answer = format_answer(card_text)
-                cards.append(('Basic', question, answer, tags))
+    for line in lines:
+        line = line.strip()
+        if line.startswith("###"):
+            current_tags = [line.replace("###", "").strip()]
+            logging.debug(f"Current tags: {current_tags}")
+        elif line.startswith("####"):
+            if question and answer_lines:
+                answer = "\n".join(answer_lines).strip()
+                cards.append((question, answer, cloze, current_tags))
+                logging.debug(f"Collected card - Question: {question}, Answer: {answer}, Cloze: {cloze}, Tags: {current_tags}")
+            question = line.replace("####", "").strip()
+            cloze = "[Cloze]" in question
+            question = question.replace("[Cloze]", "").strip()
+            answer_lines = []
+        else:
+            if line:
+                answer_lines.append(line)
+    
+    # Add the last collected card
+    if question and answer_lines:
+        answer = "\n".join(answer_lines).strip()
+        cards.append((question, answer, cloze, current_tags))
+        logging.debug(f"Collected card - Question: {question}, Answer: {answer}, Cloze: {cloze}, Tags: {current_tags}")
 
     return cards
 
-def find_tags(headers, card_header):
-    tags = []
-    for (level, header_text) in headers:
-        if header_text == card_header:
-            break
-        if len(level) == 3:
-            tags = [header_text.strip().replace(' ', '_')]
-    return tags
+@app.post("/api/uploadfile")
+async def create_anki_deck_from_markdown(file: UploadFile = File(...)):
+    try:
+        # Read the content of the uploaded file
+        content = await file.read()
+        content = content.decode('utf-8')
 
-def format_answer(text):
-    lines = text.split('\n')
-    lines = [line.strip() for line in lines if line.strip()]
-    if any(line.startswith('-') for line in lines):
-        formatted_lines = ['<li>' + line[1:].strip() + '</li>' if line.startswith('-') else line for line in lines]
-        return '<ul>' + ''.join(formatted_lines) + '</ul>'
-    else:
-        return '<br>'.join(lines)
+        # Create a new deck
+        deck = genanki.Deck(
+            2059400110,
+            'ERP - Enterprise Resource Planning'
+        )
 
-def create_cloze_text(question, text, tags):
-    lines = text.split('\n')
-    cloze_cards = []
+        # Parse the markdown content and create cards
+        cards = parse_markdown(content)
+        for question, answer, cloze, tags in cards:
+            if cloze:
+                add_cloze_card(deck, f"{question} {{c1::{answer}}}", tags=tags)
+            else:
+                add_basic_card(deck, question, answer, tags=tags)
 
-    for i, line in enumerate(lines):
-        if ':' in line:
-            prefix, content = line.split(':', 1)
-            cloze = '{{c1::' + content.strip() + '}}'
-            cloze_line = prefix.strip() + ': ' + cloze
+        # Check if any cards were added
+        if len(deck.notes) == 0:
+            logging.debug("No cards were added to the deck.")
         else:
-            cloze = '{{c1::' + line.strip() + '}}'
-            cloze_line = cloze
+            logging.debug(f"{len(deck.notes)} cards were added to the deck.")
 
-        if any(l.startswith('-') for l in lines):
-            cloze_text = '<ul>' + ''.join(['<li>' + l[1:].strip() + '</li>' if idx != i else '<li>' + cloze_line[1:].strip() + '</li>' for idx, l in enumerate(lines) if l.strip()]) + '</ul>'
-        else:
-            cloze_text = '<br>'.join(lines[:i] + [cloze_line] + lines[i+1:])
+        # Write the deck to a file-like object
+        output_buffer = io.BytesIO()
+        anki_pkg = genanki.Package(deck)
+        anki_pkg.write_to_file(output_buffer)
+        output_buffer.seek(0)
 
-        cloze_cards.append(('Cloze', question, cloze_text, tags))
+        return StreamingResponse(output_buffer, media_type='application/octet-stream', headers={'Content-Disposition': 'attachment; filename=generated_deck.apkg'})
+    except Exception as e:
+        logging.error(f"Error processing file: {str(e)}")
+        return {"error": str(e)}
 
-    return cloze_cards
-
-def create_anki_deck(deck_name, cards):
-    my_deck = genanki.Deck(
-        deck_id=2059400110,
-        name=deck_name
-    )
-
-    basic_model = genanki.Model(
-        model_id=1607392319,
-        name='Basic Model',
-        fields=[
-            {'name': 'Question'},
-            {'name': 'Answer'},
-            {'name': 'Tags'}
-        ],
-        templates=[
-            {
-                'name': 'Card 1',
-                'qfmt': '{{Question}}',
-                'afmt': '{{FrontSide}}<hr id="answer">{{Answer}}',
-            },
-        ],
-        css="""
-        .card {
-            font-family: Arial;
-            font-size: 20px;
-            color: black;
-            background-color: white;
-        }
-        ul {
-            margin-top: 0;
-            padding-left: 20px;
-        }
-        """
-    )
-
-    cloze_model = genanki.Model(
-        model_id=1607392320,
-        name='Cloze Model',
-        fields=[
-            {'name': 'Text'},
-            {'name': 'Tags'}
-        ],
-        templates=[
-            {
-                'name': 'Cloze Card',
-                'qfmt': '{{cloze:Text}}',
-                'afmt': '{{cloze:Text}}<br><br>{{Tags}}'
-            },
-        ],
-        css="""
-        .card {
-            font-family: Arial;
-            font-size: 20px;
-            color: black;
-            background-color: white;
-        }
-        ul {
-            margin-top: 0;
-            padding-left: 20px;
-        }
-        """,
-        model_type=genanki.Model.CLOZE
-    )
-
-    for card_type, front, back, tags in cards:
-        if card_type == 'Basic':
-            note = genanki.Note(
-                model=basic_model,
-                fields=[front, back, ', '.join(tags)],
-                tags=tags
-            )
-        elif card_type == 'Cloze':
-            cloze_content = f"<b>{front}</b><br>{back}"
-            note = genanki.Note(
-                model=cloze_model,
-                fields=[cloze_content, ', '.join(tags)],
-                tags=tags
-            )
-        my_deck.add_note(note)
-
-    return my_deck
+# Run the FastAPI app (optional: for testing locally)
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)
