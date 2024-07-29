@@ -5,10 +5,9 @@ import logging
 import genanki
 import io
 import re
+import os
 
 app = FastAPI()
-
-logging.basicConfig(level=logging.DEBUG)
 
 app.add_middleware(
     CORSMiddleware,
@@ -19,12 +18,10 @@ app.add_middleware(
 )
 
 def sanitize_tag(tag):
-    # Replace spaces with underscores and remove any invalid characters
     return re.sub(r'\W+', '_', tag)
 
 def parse_markdown(content):
     lines = content.split('\n')
-    deck_name = None
     tags = []
     questions = []
     current_question = None
@@ -32,39 +29,26 @@ def parse_markdown(content):
     cloze = False
 
     for line in lines:
-        logging.debug(f"Processing line: {line}")
-        if line.startswith('# '):
-            deck_name = line[2:].strip()
-            logging.debug(f"Found deck name: {deck_name}")
-        elif line.startswith('## '):
+        if line.startswith('# ') or line.startswith('## '):
             continue
         elif line.startswith('### '):
             tags = [sanitize_tag(line[4:].strip())]
-            logging.debug(f"Found tags: {tags}")
         elif line.startswith('#### '):
             if current_question:
                 questions.append((current_question, '\n'.join(current_answer).strip(), cloze))
-                logging.debug(f"Added question: {current_question}, cloze: {cloze}")
             current_question = line[5:].strip()
             current_answer = []
             cloze = '[Cloze]' in current_question
             if cloze:
                 current_question = current_question.replace('[Cloze]', '').strip()
-            logging.debug(f"Found question: {current_question}, cloze: {cloze}")
         else:
-            if line.strip():  # Only append non-empty lines
+            if line.strip():
                 current_answer.append(line)
-                logging.debug(f"Appending to current answer: {line}")
 
     if current_question:
         questions.append((current_question, '\n'.join(current_answer).strip(), cloze))
-        logging.debug(f"Added final question: {current_question}, cloze: {cloze}")
 
-    logging.debug(f"Deck name after parsing: {deck_name}")
-    logging.debug(f"Tags after parsing: {tags}")
-    logging.debug(f"Questions after parsing: {questions}")
-
-    return deck_name, tags, questions
+    return tags, questions
 
 def create_anki_deck(deck_name, tags, questions):
     model_basic = genanki.Model(
@@ -80,7 +64,17 @@ def create_anki_deck(deck_name, tags, questions):
                 'qfmt': '{{Question}}',
                 'afmt': '{{FrontSide}}<hr id="answer">{{Answer}}',
             },
-        ])
+        ],
+        css="""
+        .card {
+         font-family: arial;
+         font-size: 20px;
+         text-align: left;
+         color: black;
+         background-color: white;
+        }
+        """
+    )
 
     model_cloze = genanki.Model(
         998877661,
@@ -105,7 +99,7 @@ def create_anki_deck(deck_name, tags, questions):
         }
         .cloze {
          font-weight: bold;
-         color: blue;
+         color: cyan;
         }
         """
     )
@@ -119,17 +113,19 @@ def create_anki_deck(deck_name, tags, questions):
     )
 
     for question, answer, cloze in questions:
-        logging.debug(f"Creating note for question: {question} with answer: {answer}")
         if not question or not answer:
-            logging.warning(f"Skipping note with empty question or answer. Question: {question}, Answer: {answer}")
             continue
 
         if cloze:
-            parts = answer.split('\n')
-            for i, part in enumerate(parts):
-                # Remove leading dashes and whitespace from list items
-                cloze_lines = [f'{{{{c{j+1}::{line.strip().lstrip("-").strip()}}}}}' if j == i else line.strip().lstrip("-").strip() for j, line in enumerate(parts)]
-                cloze_text = f"{question}<br><ul><li>" + "</li><li>".join(cloze_lines) + "</li></ul>"
+            lines = [line.strip().lstrip("-").strip() for line in answer.split('\n')]
+            for i in enumerate(lines):
+                cloze_text = question + "<br><ul>"
+                for j, part in enumerate(lines):
+                    if i == j:
+                        cloze_text += f'<li>{{{{c1::{part}}}}}</li>'
+                    else:
+                        cloze_text += f'<li>{part}</li>'
+                cloze_text += "</ul>"
                 note = genanki.Note(
                     model=model_cloze,
                     fields=[cloze_text])
@@ -137,7 +133,6 @@ def create_anki_deck(deck_name, tags, questions):
                     note.tags = tags
                 deck.add_note(note)
         else:
-            # Only format as list if answer has multiple lines
             if '\n' in answer:
                 lines = [line.strip().lstrip("-").strip() for line in answer.split('\n')]
                 answer_text = "<ul><li>" + "</li><li>".join(lines) + "</li></ul>"
@@ -146,7 +141,6 @@ def create_anki_deck(deck_name, tags, questions):
             note = genanki.Note(
                 model=model_basic,
                 fields=[question, answer_text])
-
             if tags:
                 note.tags = tags
 
@@ -157,32 +151,20 @@ def create_anki_deck(deck_name, tags, questions):
 @app.post("/api/uploadfile")
 async def create_anki_deck_from_markdown(file: UploadFile = File(...)):
     try:
-        # Read the content of the uploaded file
         content = await file.read()
         content = content.decode('utf-8')
+        
+        filename = os.path.splitext(file.filename)[0]
+        tags, questions = parse_markdown(content)
 
-        # Parse the Markdown content
-        deck_name, tags, questions = parse_markdown(content)
+        deck = create_anki_deck(filename, tags, questions)
 
-        # Log the parsed data for debugging
-        logging.debug(f"Deck name: {deck_name}")
-        logging.debug(f"Tags: {tags}")
-        logging.debug(f"Questions: {questions}")
-
-        # Ensure the deck name is not None or empty
-        if not deck_name:
-            raise ValueError("Deck name is required and was not found in the uploaded file")
-
-        # Create Anki deck
-        deck = create_anki_deck(deck_name, tags, questions)
-
-        # Write the deck to a file-like object
         output_buffer = io.BytesIO()
         anki_pkg = genanki.Package(deck)
         anki_pkg.write_to_file(output_buffer)
         output_buffer.seek(0)
 
-        return StreamingResponse(output_buffer, media_type='application/octet-stream', headers={'Content-Disposition': 'attachment; filename=generated_deck.apkg'})
+        return StreamingResponse(output_buffer, media_type='application/octet-stream', headers={'Content-Disposition': f'attachment; filename={filename}.apkg'})
     except Exception as e:
         logging.error(f"Error processing file: {str(e)}")
-        return {"error": str(e)}
+        return {"error": "Internal server error"}
